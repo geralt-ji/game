@@ -67,12 +67,30 @@ class Game:
         self.invincible_button = pygame.Rect(10, height - self.invincible_button_size - 10, 
                                              self.invincible_button_size, self.invincible_button_size)
         self.invincible_button_color = (255, 165, 0)  # 橙色
+        self.invincible_timer = 0  # 添加这行
+        self.invincible_duration = 5 * 60  # 5秒 * 60帧/秒
 
         self.pipe_gap = int(150 * self.scale_factor)  # 上下管道之间的垂直间隙
         self.pipe_speed = 2 * self.scale_factor  # 管道移动速度
 
         self.pipes = []
         self.add_pipe()
+
+        # 添加速度调整按钮
+        self.speed_button_size = int(50 * self.scale_factor)
+        self.speed_button = pygame.Rect(self.width - self.speed_button_size - 10, 10, 
+                                    self.speed_button_size, self.speed_button_size)
+        self.speed_button_color = (0, 191, 255)  # 深天蓝色
+        self.game_speed = 1  # 初始游戏速度
+
+        # 奖励方块相关
+        self.reward = None
+        self.reward_size = int(30 * self.scale_factor)
+        self.reward_spawn_timer = 0
+        self.reward_spawn_interval = random.randint(300, 600)  # 5-10秒 (假设60帧/秒)
+        self.invincible = False
+        self.invincible_timer = 0
+        self.invincible_duration = 5 * 60  # 5秒无敌时间
 
     def calculate_gap_size(self):
         increment = min(self.score, 30) * self.gap_size_increment
@@ -96,18 +114,23 @@ class Game:
     def update(self):
         if self.game_state == "PLAYING" and not self.paused:
             self.bird.update()
-            speed_multiplier = 5 if self.invincible else 1
+            speed_multiplier = self.game_speed  # 移除对无敌模式的特殊处理
             self.ground_scroll -= self.GROUND_SCROLL_SPEED * speed_multiplier
             if abs(self.ground_scroll) > self.width:
                 self.ground_scroll = 0
             
             for pipe in self.pipes:
-                pipe.update(speed_multiplier)  # 传递速度乘数
+                pipe.update(self.game_speed)  # 使用当前游戏速度
             
             # 移除屏幕外的管道
             if self.pipes and self.pipes[0].is_off_screen():
                 self.pipes.pop(0)
                 self.score += 1
+                # 检查是否需要增加关卡
+                if self.score % 3 == 0:
+                    self.level += 1
+                    # 每当关卡增加时，自动增加游戏速度
+                    self.adjust_speed(increase=True)
                 self.add_pipe()
 
             # 确保始终有足够的管道
@@ -118,6 +141,29 @@ class Game:
                 self.game_state = "START"
                 self.reset_game()
 
+            # 更新奖励方块
+            if self.reward:
+                self.reward.x -= self.pipe_speed * self.game_speed
+                if self.bird.rect.colliderect(self.reward):
+                    self.invincible = True
+                    self.invincible_timer = self.invincible_duration
+                    self.reward = None
+                elif self.reward.right < 0:
+                    self.reward = None
+
+            # 生成新的奖励方块
+            self.reward_spawn_timer += 1
+            if self.reward_spawn_timer >= self.reward_spawn_interval and not self.reward:
+                self.spawn_reward()
+                self.reward_spawn_timer = 0
+                self.reward_spawn_interval = random.randint(300, 600)
+
+            # 更新无敌状态
+            if self.invincible:
+                self.invincible_timer -= 1
+                if self.invincible_timer <= 0:
+                    self.invincible = False
+
     def draw(self, screen):
         screen.blit(self.background, (0, 0))
         
@@ -126,6 +172,12 @@ class Game:
         else:
             for pipe in self.pipes:
                 pipe.draw(screen)
+            
+            # 绘制小鸟，如果无敌则改变颜色
+            if self.invincible:
+                self.bird.color = (255, 0, 0)  # 无敌时为红色
+            else:
+                self.bird.color = (255, 255, 0)  # 普通模式为黄色
             self.bird.draw(screen)
             
             score_text = self.font.render(f"Score: {self.score}", True, (255, 255, 255))
@@ -156,8 +208,30 @@ class Game:
             screen.blit(invincible_status, (10, self.height - 40))
 
         if self.game_state == "PLAYING":
-            speed_text = self.font.render(f"Speed: {'5x' if self.invincible else '1x'}", True, (255, 255, 255))
+            speed_text = self.font.render(f"Speed: {self.game_speed:.1f}x", True, (255, 255, 255))
             screen.blit(speed_text, (10, self.height - 80))
+
+        # 绘制速度调整按钮
+        pygame.draw.rect(screen, self.speed_button_color, self.speed_button)
+        speed_text = self.font.render(f"Speed: {self.game_speed:.1f}x", True, (255, 255, 255))
+        text_rect = speed_text.get_rect(center=self.speed_button.center)
+        screen.blit(speed_text, text_rect)
+
+        # 绘制奖励方块
+        if self.reward:
+            pygame.draw.rect(screen, (255, 215, 0), self.reward)  # 金色
+
+        # 显示下一个奖励到来时间
+        next_reward_time = (self.reward_spawn_interval - self.reward_spawn_timer) // 60  # 转换为秒
+        next_reward_text = self.font.render(f"Next Reward: {next_reward_time}s", True, (255, 255, 255))
+        screen.blit(next_reward_text, (self.width - next_reward_text.get_width() - 10, 10))
+
+        # 绘制无敌状态倒计时
+        if self.invincible and self.invincible_timer > 0:
+            remaining_time = (self.invincible_timer + 59) // 60  # 向上取整，确保从5开始
+            countdown_text = self.font.render(f"Invincible: {remaining_time}s", True, (255, 0, 0))
+            text_rect = countdown_text.get_rect(center=(self.width // 2, self.height - 50))
+            screen.blit(countdown_text, text_rect)
 
     def draw_start_screen(self, screen):
         title_font = pygame.font.Font(None, int(64 * self.scale_factor))
@@ -171,7 +245,9 @@ class Game:
             return True
         
         for pipe in self.pipes:
-            if pipe.top_pipe.colliderect(self.bird.rect) or pipe.bottom_pipe.colliderect(self.bird.rect):
+            if pipe.top_pipe and pipe.top_pipe.colliderect(self.bird.rect):
+                return True
+            if pipe.bottom_pipe and pipe.bottom_pipe.colliderect(self.bird.rect):
                 return True
         
         return False
@@ -181,7 +257,12 @@ class Game:
         self.pipes = []
         self.add_pipe()
         self.score = 0
-        self.level = 1
+        self.level = 1  # 确保关卡重置为1
+        self.game_speed = 1  # 重置游戏速度为初始值
+        self.reward = None
+        self.reward_spawn_timer = 0
+        self.invincible = False
+        self.invincible_timer = 0
 
     def resize(self, width, height):
         old_scale_factor = self.scale_factor
@@ -243,6 +324,10 @@ class Game:
     def toggle_invincible(self):
         self.invincible = not self.invincible
         self.invincible_button_color = (0, 255, 0) if self.invincible else (255, 165, 0)
+        if self.invincible:
+            self.invincible_timer = self.invincible_duration
+        else:
+            self.invincible_timer = 0
 
     def check_invincible_button(self, pos):
         if self.invincible_button.collidepoint(pos):
@@ -251,12 +336,57 @@ class Game:
         return False
 
     def add_pipe(self):
+        # 设置地面和空中的比例
+        ground_height = self.ground_height
+        sky_height = self.height - ground_height
+
+        # 设置空中部分的比例
+        gap_height = int(sky_height * 0.3)  # 空隙占空中部分的30%
+        min_pipe_height = int(sky_height * 0.1)  # 最小管道高度
+
+        # 随机设置上方管道的高度
+        top_height = random.randint(min_pipe_height, sky_height - gap_height - min_pipe_height)
+        
+        # 计算下方管道的高度
+        bottom_height = sky_height - top_height - gap_height
+
+        # 设置管道的位置
         x = self.width + 100  # 确保新管道在屏幕右侧外生成
         if self.pipes:
             last_pipe = self.pipes[-1]
             x = max(x, last_pipe.x + self.pipe_distance)
-        
-        top_height = random.randint(self.pipe_min_height, self.height - self.pipe_gap - self.pipe_min_height)
-        bottom_height = self.height - top_height - self.pipe_gap
+
+        # 创建新的Pipe对象
         new_pipe = Pipe(x, top_height, bottom_height, self.pipe_speed, self.scale_factor)
+        
+        # 调整下方管道的y坐标，使其从空隙底部开始
+        new_pipe.bottom_pipe.y = self.height - ground_height - bottom_height
+
         self.pipes.append(new_pipe)
+
+    def adjust_speed(self, increase=True):
+        if increase:
+            self.game_speed = min(self.game_speed + 0.2, 5)  # 最大速度为5，每次增加0.2
+        else:
+            self.game_speed = max(self.game_speed - 0.2, 0.5)  # 最小速度为0.5，每次减少0.2
+
+    def check_speed_button(self, pos):
+        if self.speed_button.collidepoint(pos):
+            # 左键点击增加速度，右键点击减少速度
+            if pygame.mouse.get_pressed()[0]:  # 左键
+                self.adjust_speed(increase=True)
+            elif pygame.mouse.get_pressed()[2]:  # 右键
+                self.adjust_speed(increase=False)
+            return True
+        return False
+
+    def spawn_reward(self):
+        if self.pipes:
+            # 选择一个随机的管道来放置奖励
+            pipe = random.choice(self.pipes)
+            gap_top = pipe.top_pipe.bottom
+            gap_bottom = pipe.bottom_pipe.top
+            reward_y = random.randint(gap_top + self.reward_size, gap_bottom - self.reward_size)
+            self.reward = pygame.Rect(pipe.x + pipe.width / 2 - self.reward_size / 2, 
+                                      reward_y - self.reward_size / 2, 
+                                      self.reward_size, self.reward_size)

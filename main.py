@@ -46,8 +46,8 @@ def main():
                 elif event.key == pygame.K_p:
                     game.toggle_pause()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:  # 左键
-                    if not game.check_pause_button(event.pos) and not game.check_invincible_button(event.pos):
+                if event.button == 1 or event.button == 3:  # 左键或右键
+                    if not game.check_pause_button(event.pos) and not game.check_invincible_button(event.pos) and not game.check_speed_button(event.pos):
                         game.bird_jump()
             if event.type == pygame.VIDEORESIZE:
                 WINDOW_WIDTH, WINDOW_HEIGHT = event.size
