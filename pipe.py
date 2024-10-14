@@ -6,14 +6,17 @@ class Pipe:
         self.top_height = top_height
         self.bottom_height = bottom_height
         self.speed = speed
-        self.width = int(52 * scale_factor)
+        self.scale_factor = scale_factor
         self.color = (0, 255, 0)  # 绿色
-        self.gap = int(150 * scale_factor)  # 添加 gap 属性
+        self.resize(scale_factor)
 
-        self.top_pipe = pygame.Rect(x, 0, self.width, top_height)
-        self.bottom_pipe = pygame.Rect(x, top_height + self.gap, self.width, bottom_height)
-
-        self.base_speed = speed  # 保存基础速度
+    def resize(self, new_scale_factor):
+        self.scale_factor = new_scale_factor
+        self.width = int(52 * self.scale_factor)
+        self.gap = int(150 * self.scale_factor)
+        self.top_pipe = pygame.Rect(self.x, 0, self.width, self.top_height)
+        self.bottom_pipe = pygame.Rect(self.x, self.top_height + self.gap, self.width, self.bottom_height)
+        self.base_speed = self.speed * (new_scale_factor / self.scale_factor)
 
     def update(self, speed_multiplier=1):
         self.x -= self.base_speed * speed_multiplier

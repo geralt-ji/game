@@ -11,6 +11,12 @@ class Game:
         self.height = height
         self.scale_factor = min(width / self.original_width, height / self.original_height)
         
+        # 添加这行，确保它在任何可能使用它的方法之前定义
+        self.pipe_min_height = int(50 * self.scale_factor)
+        
+        # 添加这行来定义 pipe_speed
+        self.pipe_speed = 2 * self.scale_factor
+        
         self.score = 0  # 将score的初始化移到这里
         self.bird = Bird(50, self.height // 2, self.scale_factor)
         self.pipes = []  # 初始化为空列表
@@ -62,9 +68,7 @@ class Game:
                                              self.invincible_button_size, self.invincible_button_size)
         self.invincible_button_color = (255, 165, 0)  # 橙色
 
-        self.pipe_distance = int(300 * self.scale_factor)  # 管道之间的水平距离
         self.pipe_gap = int(150 * self.scale_factor)  # 上下管道之间的垂直间隙
-        self.pipe_min_height = int(50 * self.scale_factor)  # 管道的最小高度
         self.pipe_speed = 2 * self.scale_factor  # 管道移动速度
 
         self.pipes = []
@@ -76,7 +80,9 @@ class Game:
 
     def create_pipe(self):
         gap_size = self.current_gap_size
-        new_pipe = Pipe(self.next_pipe_x, self.height, gap_size, self.height, self.scale_factor)
+        top_height = random.randint(self.pipe_min_height, self.height - gap_size - self.pipe_min_height)
+        bottom_height = self.height - top_height - gap_size
+        new_pipe = Pipe(self.next_pipe_x, top_height, bottom_height, self.pipe_speed, self.scale_factor)
         self.next_pipe_x += self.pipe_distance
         return new_pipe
 
@@ -178,9 +184,12 @@ class Game:
         self.level = 1
 
     def resize(self, width, height):
+        old_scale_factor = self.scale_factor
         self.width = width
         self.height = height
         self.scale_factor = min(width / self.original_width, height / self.original_height)
+        scale_ratio = self.scale_factor / old_scale_factor
+
         self.background = pygame.Surface((width, height))
         self.background.fill((135, 206, 235))  # 天蓝色
         self.ground_height = int(100 * self.scale_factor)
@@ -192,7 +201,7 @@ class Game:
         self.bird.resize(self.scale_factor)
         for pipe in self.pipes:
             pipe.resize(self.scale_factor)
-
+        
         # 调整暂停按钮大小和位置
         self.pause_button_size = int(30 * self.scale_factor)
         self.pause_button = pygame.Rect(10, 10, self.pause_button_size, self.pause_button_size)
@@ -201,6 +210,15 @@ class Game:
         self.invincible_button_size = int(50 * self.scale_factor)
         self.invincible_button = pygame.Rect(10, height - self.invincible_button_size - 10, 
                                              self.invincible_button_size, self.invincible_button_size)
+
+        # 调整管道的位置
+        for pipe in self.pipes:
+            pipe.x *= scale_ratio
+            pipe.top_pipe.x = pipe.x
+            pipe.bottom_pipe.x = pipe.x
+            pipe.top_pipe.height = int(pipe.top_pipe.height * scale_ratio)
+            pipe.bottom_pipe.y = int(pipe.bottom_pipe.y * scale_ratio)
+            pipe.bottom_pipe.height = int(pipe.bottom_pipe.height * scale_ratio)
 
     def draw_pause_screen(self, screen):
         pause_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
