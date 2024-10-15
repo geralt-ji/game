@@ -13,7 +13,7 @@ class Game:
         self.height = height
         self.scale_factor = min(width / self.original_width, height / self.original_height)
         
-        # 加载小鸟 GIF
+        # 加载小鸟 GIF 
         self.bird_frames = self.load_gif_frames(r'C:\Users\Wen Ji\Desktop\work\game\Images\Gif previews\Bird-A.gif')
         self.bird_frame_index = 0
         self.bird_animation_speed = 0.2  # 增加动画速度
@@ -235,7 +235,7 @@ class Game:
         if self.reward:
             pygame.draw.rect(screen, (255, 215, 0), self.reward)  # 金色
 
-        # 显示下一个奖励到来时间
+        # 显下一个奖励到来时间
         next_reward_time = (self.reward_spawn_interval - self.reward_spawn_timer) // 60  # 转换为秒
         next_reward_text = self.font.render(f"Next Reward: {next_reward_time}s", True, (255, 255, 255))
         screen.blit(next_reward_text, (self.width - next_reward_text.get_width() - 10, 10))
@@ -351,7 +351,7 @@ class Game:
         return False
 
     def add_pipe(self):
-        # 设置地面和空中的比例
+        # 设置地面空中的比例
         ground_height = self.ground_height
         sky_height = self.height - ground_height
 
@@ -420,8 +420,38 @@ class Game:
                 py_image = pygame.image.fromstring(frame_data, size, mode).convert_alpha()
                 
                 # 缩放图像
-                scaled_size = (int(size[0] * 0.5 * self.scale_factor), int(size[1] * 0.5 * self.scale_factor))
+                scaled_size = (int(size[0] * 0.03 * self.scale_factor), int(size[1] * 0.051 * self.scale_factor))
                 scaled_image = pygame.transform.scale(py_image, scaled_size)
                 
                 frames.append(scaled_image)
         return frames
+
+    def resize_image(self, image_path):
+        # 打开图像
+        with Image.open(image_path) as img:
+            # 获取原始尺寸
+            original_size = img.size
+            # 计算新的尺寸
+            new_size = (int(original_size[0] * 0.1), int(original_size[1] * 0.1))
+            # 调整图像大小
+            resized_img = img.resize(new_size, Image.ANTIALIAS)
+            return resized_img
+
+    def remove_background(self, image_path):
+        # 打开图像并转换为 RGBA 模式
+        with Image.open(image_path) as img:
+            img = img.convert("RGBA")
+            datas = img.getdata()
+
+            new_data = []
+            for item in datas:
+                # 检查像素是否为白色
+                if item[:3] == (255, 255, 255):
+                    # 将白色像素的透明度��为0
+                    new_data.append((255, 255, 255, 0))
+                else:
+                    # 保留其他像素
+                    new_data.append(item)
+
+            img.putdata(new_data)
+            return img
