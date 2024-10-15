@@ -2,6 +2,8 @@ import pygame
 import random
 from bird import Bird
 from pipe import Pipe
+from PIL import Image, ImageSequence
+import io
 
 class Game:
     def __init__(self, width, height):
@@ -11,6 +13,15 @@ class Game:
         self.height = height
         self.scale_factor = min(width / self.original_width, height / self.original_height)
         
+        # 加载小鸟 GIF
+        self.bird_frames = self.load_gif_frames(r'C:\Users\Wen Ji\Desktop\work\game\Images\Gif previews\Bird-A.gif')
+        self.bird_frame_index = 0
+        self.bird_animation_speed = 0.2  # 增加动画速度
+
+        # 调整小鸟的初始位置
+        bird_start_x = int(self.width * 0.2)  # 将小鸟放在屏幕宽度的20%处
+        self.bird = Bird(bird_start_x, self.height // 2, self.scale_factor, self.bird_frames[0])
+        
         # 添加这行，确保它在任何可能使用它的方法之前定义
         self.pipe_min_height = int(50 * self.scale_factor)
         
@@ -18,8 +29,7 @@ class Game:
         self.pipe_speed = 2 * self.scale_factor
         
         self.score = 0  # 将score的初始化移到这里
-        self.bird = Bird(50, self.height // 2, self.scale_factor)
-        self.pipes = []  # 初始化为空列表
+        self.pipes = []  # 初始化为列表
         self.pipe_spawn_timer = 0
         self.PIPE_SPAWN_INTERVAL = int(75 * self.scale_factor)
         self.font = pygame.font.Font(None, int(36 * self.scale_factor))
@@ -164,6 +174,10 @@ class Game:
                 if self.invincible_timer <= 0:
                     self.invincible = False
 
+            # 更新小鸟动画
+            self.bird_frame_index = (self.bird_frame_index + self.bird_animation_speed) % len(self.bird_frames)
+            self.bird.image = self.bird_frames[int(self.bird_frame_index)]
+
     def draw(self, screen):
         screen.blit(self.background, (0, 0))
         
@@ -178,7 +192,7 @@ class Game:
                 self.bird.color = (255, 0, 0)  # 无敌时为红色
             else:
                 self.bird.color = (255, 255, 0)  # 普通模式为黄色
-            self.bird.draw(screen)
+            screen.blit(self.bird.image, self.bird.rect)
             
             score_text = self.font.render(f"Score: {self.score}", True, (255, 255, 255))
             screen.blit(score_text, (10 + self.pause_button_size + 10, 10))  # 移动分数显示位置
@@ -241,7 +255,7 @@ class Game:
         screen.blit(start_text, (self.width // 2 - start_text.get_width() // 2, self.height // 2))
 
     def check_collision(self):
-        if self.bird.y <= 0 or self.bird.y >= self.height - self.ground_height:
+        if self.bird.rect.top <= 0 or self.bird.rect.bottom >= self.height - self.ground_height:
             return True
         
         for pipe in self.pipes:
@@ -253,7 +267,8 @@ class Game:
         return False
 
     def reset_game(self):
-        self.bird = Bird(50, self.height // 2, self.scale_factor)
+        bird_start_x = int(self.width * 0.2)
+        self.bird = Bird(bird_start_x, self.height // 2, self.scale_factor, self.bird_frames[0])
         self.pipes = []
         self.add_pipe()
         self.score = 0
@@ -341,7 +356,7 @@ class Game:
         sky_height = self.height - ground_height
 
         # 设置空中部分的比例
-        gap_height = int(sky_height * 0.3)  # 空隙占空中部分的30%
+        gap_height = int(sky_height * 0.3)  # 空隙占中部分的30%
         min_pipe_height = int(sky_height * 0.1)  # 最小管道高度
 
         # 随机设置上方管道的高度
@@ -392,3 +407,21 @@ class Game:
             self.reward = pygame.Rect(pipe_outside_screen.x + pipe_outside_screen.width / 2 - self.reward_size / 2, 
                                       reward_y - self.reward_size / 2, 
                                       self.reward_size, self.reward_size)
+
+    def load_gif_frames(self, gif_path):
+        frames = []
+        with Image.open(gif_path) as gif:
+            for frame in ImageSequence.Iterator(gif):
+                # 将 PIL Image 转换为 Pygame surface
+                frame = frame.convert('RGBA')
+                frame_data = frame.tobytes()
+                size = frame.size
+                mode = frame.mode
+                py_image = pygame.image.fromstring(frame_data, size, mode).convert_alpha()
+                
+                # 缩放图像
+                scaled_size = (int(size[0] * 0.5 * self.scale_factor), int(size[1] * 0.5 * self.scale_factor))
+                scaled_image = pygame.transform.scale(py_image, scaled_size)
+                
+                frames.append(scaled_image)
+        return frames

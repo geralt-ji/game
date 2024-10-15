@@ -1,39 +1,24 @@
 import pygame
 
 class Bird:
-    def __init__(self, x, y, scale_factor):
-        self.original_x = x
-        self.original_y = y
-        self.scale_factor = scale_factor
-        self.x = x * scale_factor
-        self.y = y  # 直接使用传入的 y 值，不进行缩放
+    def __init__(self, x, y, scale_factor, image):
+        self.image = image
+        self.rect = self.image.get_rect()
+        
+        # 调整中心点，使其更靠前
+        self.rect.centerx = x
+        self.rect.centery = y
+        self.rect.x -= int(self.rect.width * 0.3)  # 将中心点向左移动图像宽度的30%
+        
         self.velocity = 0
-        self.gravity = 0.35 * scale_factor
-        self.jump_strength = -5.6 * scale_factor
-        self.original_size = (30, 30)
-        self.size = (int(self.original_size[0] * scale_factor), int(self.original_size[1] * scale_factor))
-        self.image = pygame.Surface(self.size)
-        self.image.fill((255, 255, 0))  # 黄色方块代表小鸟
-        self.rect = self.image.get_rect(center=(self.x, self.y))
+        self.gravity = 0.5 * scale_factor * 0.5  # 降低重力到原来的50%
+        self.jump_strength = -8 * scale_factor * 0.7  # 同样降低跳跃强度到原来的50%
+
+    def update(self):
+        self.velocity += self.gravity
+        self.rect.y += self.velocity
 
     def jump(self):
         self.velocity = self.jump_strength
 
-    def update(self):
-        self.velocity += self.gravity
-        self.y += self.velocity
-        self.rect.center = (self.x, self.y)
-
-    def draw(self, screen):
-        screen.blit(self.image, self.rect)
-
-    def resize(self, scale_factor):
-        self.scale_factor = scale_factor
-        self.x = self.original_x * scale_factor
-        # 保持 y 坐标不变，确保小鸟保持在屏幕中间
-        self.size = (int(self.original_size[0] * scale_factor), int(self.original_size[1] * scale_factor))
-        self.image = pygame.Surface(self.size)
-        self.image.fill((255, 255, 0))
-        self.rect = self.image.get_rect(center=(self.x, self.y))
-        self.gravity = 0.35 * scale_factor
-        self.jump_strength = -5.6 * scale_factor
+    # 移除 draw 方法，因为我们现在在 Game 类中处理绘制
