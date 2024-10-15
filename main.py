@@ -14,7 +14,7 @@ pygame.init()
 WINDOW_WIDTH = 1024
 WINDOW_HEIGHT = 768
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
-pygame.display.set_caption("Flappy Bird Clone")
+pygame.display.set_caption("Flappy Bird")
 
 # 设置游戏图标
 icon_path = os.path.join(current_dir, 'assets', 'flappy_bird_icon.png')
