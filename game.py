@@ -381,12 +381,14 @@ class Game:
         return False
 
     def spawn_reward(self):
-        if self.pipes:
-            # 选择一个随机的管道来放置奖励
-            pipe = random.choice(self.pipes)
-            gap_top = pipe.top_pipe.bottom
-            gap_bottom = pipe.bottom_pipe.top
+        # 找到屏幕外的第一个管道
+        screen_right_edge = self.width
+        pipe_outside_screen = next((pipe for pipe in self.pipes if pipe.x > screen_right_edge), None)
+        
+        if pipe_outside_screen:
+            gap_top = pipe_outside_screen.top_pipe.bottom
+            gap_bottom = pipe_outside_screen.bottom_pipe.top
             reward_y = random.randint(gap_top + self.reward_size, gap_bottom - self.reward_size)
-            self.reward = pygame.Rect(pipe.x + pipe.width / 2 - self.reward_size / 2, 
+            self.reward = pygame.Rect(pipe_outside_screen.x + pipe_outside_screen.width / 2 - self.reward_size / 2, 
                                       reward_y - self.reward_size / 2, 
                                       self.reward_size, self.reward_size)
